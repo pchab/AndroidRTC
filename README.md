@@ -2,12 +2,12 @@
 
 ## WebRTC Live Streaming
 
-- Android client
+- a very simple Android client for ProjectRTC
 
 ## Libraries
 
-- libjingle peerconnection
-- android-websockets
+- [libjingle peerconnection](https://code.google.com/p/libjingle/)
+- [android-websockets](https://github.com/koush/android-websockets)
 
 ## Author
 

@@ -5,4 +5,3 @@
               android:layout_height="fill_parent"
               android:keepScreenOn="true">
 </LinearLayout>
-

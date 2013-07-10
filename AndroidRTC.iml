@@ -16,7 +16,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="libjingle_peerconnection" level="project" />
-    <orderEntry type="library" name="libsocketio" level="project" />
     <orderEntry type="library" name="lib_android_websockets" level="project" />
   </component>
 </module>

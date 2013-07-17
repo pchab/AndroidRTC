@@ -33,13 +33,13 @@ public class RTCActivity extends Activity {
             try {
                 JSONObject json = arguments.getJSONObject(0);
                 String from = json.getString("from");
+
+                // if peer is unknown, add him
                 if(!peers.containsKey(from)) {
                     addPeer(from);
                 }
-                peers.get(from).handleMessage(
-                        json.getString("type"),
-                        json.getJSONObject("payload")
-                );
+
+                peers.get(from).getMessageHandler().handle(json);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -66,40 +66,71 @@ public class RTCActivity extends Activity {
         }
     });
 
+    // Command pattern
+    public interface Command{
+        void execute(JSONObject payload) throws JSONException;
+    }
+
     private class Peer implements SdpObserver, PeerConnection.Observer{
         private PeerConnection pc;
         private String id;
+        private MessageHandler messageHandler;
 
-        private void handleMessage(String type, JSONObject payload){
-            try {
-                if(type.equals("offer")) {
-                    SessionDescription sdp = new SessionDescription(
-                            SessionDescription.Type.fromCanonicalForm(type),
-                            (String) payload.get("sdp")
+        public class MessageHandler {
+            private Map<String, Command> commandMap;
+
+            public MessageHandler() {
+                this.commandMap = new HashMap<String, Command>();
+                commandMap.put("offer", new SetRemoteSDPCommand());
+                commandMap.put("answer", new SetRemoteSDPCommand());
+                commandMap.put("stop", new StopCommand());
+                commandMap.put("close", new CloseCommand());
+                commandMap.put("candidate", new AddIceCandidateCommand());
+            }
+
+            public void handle(JSONObject json) throws JSONException {
+                String type = json.getString("type");
+                JSONObject payload = json.getJSONObject("payload");
+                commandMap.get(type).execute(payload);
+            }
+        }
+
+        public MessageHandler getMessageHandler() {
+            return messageHandler;
+        }
+
+        public class SetRemoteSDPCommand implements Command{
+            public void execute(JSONObject payload) throws JSONException {
+                SessionDescription sdp = new SessionDescription(
+                    SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
+                    payload.getString("sdp")
+                );
+                pc.setRemoteDescription(Peer.this, sdp);
+            }
+        }
+
+        public class StopCommand implements Command {
+            public void execute(JSONObject payload) throws JSONException {
+                sendMessage("closed", payload);
+            }
+        }
+
+        public class CloseCommand implements Command{
+            public void execute(JSONObject payload) {
+                removePeer(id);
+            }
+        }
+
+        public class AddIceCandidateCommand implements Command{
+            public void execute(JSONObject payload) throws JSONException {
+                if (pc.getRemoteDescription() != null) {
+                    IceCandidate candidate = new IceCandidate(
+                        payload.getString("id"),
+                        payload.getInt("label"),
+                        payload.getString("candidate")
                     );
-                    pc.setRemoteDescription(this, sdp);
-                } else if (type.equals("answer")) {
-                    SessionDescription sdp = new SessionDescription(
-                            SessionDescription.Type.fromCanonicalForm(type),
-                            (String) payload.get("sdp")
-                    );
-                    pc.setRemoteDescription(this, sdp);
-                } else if (type.equals("stop")) {
-                    sendMessage("closed", null);
-                } else if (type.equals("closed")) {
-                    removePeer(id);
-                } else if (type.equals("candidate")) {
-                    if (pc.getRemoteDescription() != null) {
-                        IceCandidate candidate = new IceCandidate(
-                                (String) payload.get("id"),
-                                payload.getInt("label"),
-                                (String) payload.get("candidate")
-                        );
-                        pc.addIceCandidate(candidate);
-                    }
+                    pc.addIceCandidate(candidate);
                 }
-            } catch (JSONException e) {
-                e.printStackTrace();
             }
         }
 
@@ -186,6 +217,7 @@ public class RTCActivity extends Activity {
         public Peer(String id) {
             this.pc = factory.createPeerConnection(iceServers, pcConstraints, this);
             this.id = id;
+            this.messageHandler = new MessageHandler();
         }
     }
 

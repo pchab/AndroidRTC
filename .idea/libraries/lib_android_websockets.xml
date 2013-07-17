@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="lib_android_websockets">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/libs/lib_android_websockets.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

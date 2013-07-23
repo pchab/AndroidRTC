@@ -37,8 +37,8 @@ public class RTCActivity extends Activity {
         public void on(String event, JSONArray arguments) {
 
             try {
+                if(event.equals("id")) updateLink(arguments.getString(0));
                 JSONObject json = arguments.getJSONObject(0);
-
                 messageHandler.handle(json);
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -297,5 +297,14 @@ public class RTCActivity extends Activity {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    private void updateLink(final String id){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                link.setText(host + id);
+            }
+        });
     }
 }

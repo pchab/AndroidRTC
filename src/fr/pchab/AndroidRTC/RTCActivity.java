@@ -3,6 +3,9 @@ package fr.pchab.AndroidRTC;
 import android.app.Activity;
 import android.os.Bundle;
 
+import android.view.View;
+import android.widget.EditText;
+import android.widget.TextView;
 import com.codebutler.android_websockets.SocketIOClient;
 
 import org.json.JSONArray;
@@ -23,6 +26,8 @@ public class RTCActivity extends Activity {
     private Map<String, Peer> peers = new HashMap<String, Peer>();
     private MediaConstraints pcConstraints;
     private MediaStream lMS;
+    private EditText name;
+    private TextView link;
     private SocketIOClient client = new SocketIOClient(URI.create(host), new SocketIOClient.Handler() {
         @Override
         public void onConnect() {
@@ -30,16 +35,11 @@ public class RTCActivity extends Activity {
 
         @Override
         public void on(String event, JSONArray arguments) {
+
             try {
                 JSONObject json = arguments.getJSONObject(0);
-                String from = json.getString("from");
 
-                // if peer is unknown, add him
-                if(!peers.containsKey(from)) {
-                    addPeer(from);
-                }
-
-                peers.get(from).getMessageHandler().handle(json);
+                messageHandler.handle(json);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -65,82 +65,85 @@ public class RTCActivity extends Activity {
         public void onConnectToEndpoint(String endpoint) {
         }
     });
+    private MessageHandler messageHandler = new MessageHandler();
 
     // Command pattern
     public interface Command{
-        void execute(JSONObject payload) throws JSONException;
+        void execute(Peer peer, JSONObject payload) throws JSONException;
+    }
+
+    public class SetRemoteSDPCommand implements Command{
+        public void execute(Peer peer, JSONObject payload) throws JSONException {
+            SessionDescription sdp = new SessionDescription(
+                    SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
+                    payload.getString("sdp")
+            );
+            peer.pc.setRemoteDescription(peer, sdp);
+        }
+    }
+
+    public class StopCommand implements Command {
+        public void execute(Peer peer, JSONObject payload) throws JSONException {
+            sendMessage(peer.id, "closed", payload);
+        }
+    }
+
+    public class CloseCommand implements Command{
+        public void execute(Peer peer, JSONObject payload) {
+            removePeer(peer);
+        }
+    }
+
+    public class AddIceCandidateCommand implements Command{
+        public void execute(Peer peer, JSONObject payload) throws JSONException {
+            if (peer.pc.getRemoteDescription() != null) {
+                IceCandidate candidate = new IceCandidate(
+                        payload.getString("id"),
+                        payload.getInt("label"),
+                        payload.getString("candidate")
+                );
+                peer.pc.addIceCandidate(candidate);
+            }
+        }
+    }
+
+    private void sendMessage(String to, String type, JSONObject payload) throws JSONException {
+        JSONObject message = new JSONObject();
+        message.put("to", to);
+        message.put("type", type);
+        message.put("payload", payload);
+        client.emit("message", new JSONArray().put(message));
+    }
+
+    public class MessageHandler {
+        private Map<String, Command> commandMap;
+
+        public MessageHandler() {
+            this.commandMap = new HashMap<String, Command>();
+            commandMap.put("offer", new SetRemoteSDPCommand());
+            commandMap.put("answer", new SetRemoteSDPCommand());
+            commandMap.put("stop", new StopCommand());
+            commandMap.put("close", new CloseCommand());
+            commandMap.put("candidate", new AddIceCandidateCommand());
+        }
+
+        public void handle(JSONObject json) throws JSONException {
+            String from = json.getString("from");
+            String type = json.getString("type");
+            JSONObject payload = json.getJSONObject("payload");
+
+            // if peer is unknown, add him
+            if(!peers.containsKey(from)) {
+                addPeer(from);
+            }
+
+            commandMap.get(type).execute(peers.get(from), payload);
+        }
     }
 
     private class Peer implements SdpObserver, PeerConnection.Observer{
         private PeerConnection pc;
         private String id;
-        private MessageHandler messageHandler;
-
-        public class MessageHandler {
-            private Map<String, Command> commandMap;
-
-            public MessageHandler() {
-                this.commandMap = new HashMap<String, Command>();
-                commandMap.put("offer", new SetRemoteSDPCommand());
-                commandMap.put("answer", new SetRemoteSDPCommand());
-                commandMap.put("stop", new StopCommand());
-                commandMap.put("close", new CloseCommand());
-                commandMap.put("candidate", new AddIceCandidateCommand());
-            }
-
-            public void handle(JSONObject json) throws JSONException {
-                String type = json.getString("type");
-                JSONObject payload = json.getJSONObject("payload");
-                commandMap.get(type).execute(payload);
-            }
-        }
-
-        public MessageHandler getMessageHandler() {
-            return messageHandler;
-        }
-
-        public class SetRemoteSDPCommand implements Command{
-            public void execute(JSONObject payload) throws JSONException {
-                SessionDescription sdp = new SessionDescription(
-                    SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
-                    payload.getString("sdp")
-                );
-                pc.setRemoteDescription(Peer.this, sdp);
-            }
-        }
-
-        public class StopCommand implements Command {
-            public void execute(JSONObject payload) throws JSONException {
-                sendMessage("closed", payload);
-            }
-        }
-
-        public class CloseCommand implements Command{
-            public void execute(JSONObject payload) {
-                removePeer(id);
-            }
-        }
-
-        public class AddIceCandidateCommand implements Command{
-            public void execute(JSONObject payload) throws JSONException {
-                if (pc.getRemoteDescription() != null) {
-                    IceCandidate candidate = new IceCandidate(
-                        payload.getString("id"),
-                        payload.getInt("label"),
-                        payload.getString("candidate")
-                    );
-                    pc.addIceCandidate(candidate);
-                }
-            }
-        }
-
-        private void sendMessage(String type, JSONObject payload) throws JSONException {
-            JSONObject message = new JSONObject();
-            message.put("to", id);
-            message.put("type", type);
-            message.put("payload", payload);
-            client.emit("message", new JSONArray().put(message));
-        }
 
         @Override
         public void onCreateSuccess(final SessionDescription sdp) {
@@ -151,7 +154,7 @@ public class RTCActivity extends Activity {
                         JSONObject payload = new JSONObject();
                         payload.put("type", sdp.type.canonicalForm());
                         payload.put("sdp", sdp.description);
-                        sendMessage("answer", payload);
+                        sendMessage(id, "answer", payload);
                         pc.setLocalDescription(Peer.this, sdp);
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -178,7 +181,7 @@ public class RTCActivity extends Activity {
         @Override
         public void onSignalingChange(PeerConnection.SignalingState signalingState) {
             if(signalingState == PeerConnection.SignalingState.CLOSED) {
-                removePeer(id);
+                removePeer(this);
             }
         }
 
@@ -197,7 +200,7 @@ public class RTCActivity extends Activity {
                         payload.put("label", candidate.sdpMLineIndex);
                         payload.put("id", candidate.sdpMid);
                         payload.put("candidate", candidate.sdp);
-                        sendMessage("candidate", payload);
+                        sendMessage(id, "candidate", payload);
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -217,7 +220,6 @@ public class RTCActivity extends Activity {
         public Peer(String id) {
             this.pc = factory.createPeerConnection(iceServers, pcConstraints, this);
             this.id = id;
-            this.messageHandler = new MessageHandler();
         }
     }
 
@@ -225,6 +227,8 @@ public class RTCActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+        name = (EditText) findViewById(R.id.name);
+        link = (TextView) findViewById(R.id.link);
 
         iceServers.add(new PeerConnection.IceServer("stun:23.21.150.121"));
         iceServers.add(new PeerConnection.IceServer("stun:stun.l.google.com:19302"));
@@ -249,14 +253,6 @@ public class RTCActivity extends Activity {
         VideoTrack videoTrack = factory.createVideoTrack("ARDAMSv0", videoSource);
         lMS.addTrack(videoTrack);
         lMS.addTrack(factory.createAudioTrack("ARDAMSa0"));
-
-        JSONArray arguments = new JSONArray();
-        arguments.put("android_test");
-        try {
-            client.emit("readyToStream", arguments);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
     }
 
     // Cycle through likely device names for the camera and return the first
@@ -286,9 +282,20 @@ public class RTCActivity extends Activity {
         peers.put(id, peer);
     }
 
-    public void removePeer(String id) {
-        peers.get(id).pc.close();
-        peers.get(id).pc.dispose();
-        peers.remove(id);
+    public void removePeer(Peer peer) {
+        peer.pc.close();
+        peer.pc.dispose();
+        peers.remove(peer.id);
+    }
+
+    // button onClick method
+    public void stream(View view) {
+        JSONArray arguments = new JSONArray();
+        arguments.put(name.getText());
+        try {
+            client.emit("readyToStream", arguments);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 }

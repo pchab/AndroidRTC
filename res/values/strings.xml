@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AndroidRTC</string>
+    <string name="button_stream">Stream</string>
+    <string name="username_hint">Username</string>
+    <string name="link">Link</string>
 </resources>

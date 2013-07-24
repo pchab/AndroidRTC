@@ -20,6 +20,7 @@
     <TextView
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
+            android:textIsSelectable="true"
             android:id="@+id/link"
             android:text="@string/link"/>
 </LinearLayout>

@@ -12,37 +12,49 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import org.webrtc.*;
+import org.webrtc.IceCandidate;
+import org.webrtc.MediaConstraints;
+import org.webrtc.MediaStream;
+import org.webrtc.PeerConnection;
+import org.webrtc.PeerConnectionFactory;
+import org.webrtc.SdpObserver;
+import org.webrtc.SessionDescription;
+import org.webrtc.VideoCapturer;
+import org.webrtc.VideoSource;
 
 import java.net.URI;
 import java.util.LinkedList;
 import java.util.HashMap;
-import java.util.Map;
 
 public class RTCActivity extends Activity {
-    private String host = "http://54.214.218.3:3000/";
+    private static final String HOST = "http://54.214.218.3:3000/";
     private LinkedList<PeerConnection.IceServer> iceServers = new LinkedList<PeerConnection.IceServer>();
     private PeerConnectionFactory factory;
-    private Map<String, Peer> peers = new HashMap<String, Peer>();
+    private HashMap<String, Peer> peers = new HashMap<String, Peer>();
     private MediaConstraints pcConstraints;
     private MediaStream lMS;
     private EditText name;
     private TextView link;
-    private SocketIOClient client = new SocketIOClient(URI.create(host), new SocketIOClient.Handler() {
+    private final SocketIOClient client = new SocketIOClient(URI.create(HOST), new SocketIOClient.Handler() {
         @Override
         public void onConnect() {
         }
 
         @Override
-        public void on(String event, JSONArray arguments) {
+        public void on(final String event, final JSONArray arguments) {
 
-            try {
-                if(event.equals("id")) updateLink(arguments.getString(0));
-                JSONObject json = arguments.getJSONObject(0);
-                messageHandler.handle(json);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        if(event.equals("id")) link.setText(HOST + arguments.getString(0));
+                        JSONObject json = arguments.getJSONObject(0);
+                        messageHandler.handle(json);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
         }
 
         @Override
@@ -65,15 +77,15 @@ public class RTCActivity extends Activity {
         public void onConnectToEndpoint(String endpoint) {
         }
     });
-    private MessageHandler messageHandler = new MessageHandler();
+    private final MessageHandler messageHandler = new MessageHandler();
 
-    // Command pattern
     public interface Command{
-        void execute(Peer peer, JSONObject payload) throws JSONException;
+        void execute(String peerId, JSONObject payload) throws JSONException;
     }
 
     public class SetRemoteSDPCommand implements Command{
-        public void execute(Peer peer, JSONObject payload) throws JSONException {
+        public void execute(String peerId, JSONObject payload) throws JSONException {
+            Peer peer = peers.get(peerId);
             SessionDescription sdp = new SessionDescription(
                     SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
                     payload.getString("sdp")
@@ -83,26 +95,27 @@ public class RTCActivity extends Activity {
     }
 
     public class StopCommand implements Command {
-        public void execute(Peer peer, JSONObject payload) throws JSONException {
-            sendMessage(peer.id, "closed", payload);
+        public void execute(String peerId, JSONObject payload) throws JSONException {
+            sendMessage(peerId, "closed", payload);
         }
     }
 
     public class CloseCommand implements Command{
-        public void execute(Peer peer, JSONObject payload) {
-            removePeer(peer);
+        public void execute(String peerId, JSONObject payload) {
+            removePeer(peerId);
         }
     }
 
     public class AddIceCandidateCommand implements Command{
-        public void execute(Peer peer, JSONObject payload) throws JSONException {
-            if (peer.pc.getRemoteDescription() != null) {
+        public void execute(String peerId, JSONObject payload) throws JSONException {
+            PeerConnection pc = peers.get(peerId).pc;
+            if (pc.getRemoteDescription() != null) {
                 IceCandidate candidate = new IceCandidate(
                         payload.getString("id"),
                         payload.getInt("label"),
                         payload.getString("candidate")
                 );
-                peer.pc.addIceCandidate(candidate);
+                pc.addIceCandidate(candidate);
             }
         }
     }
@@ -116,7 +129,7 @@ public class RTCActivity extends Activity {
     }
 
     public class MessageHandler {
-        private Map<String, Command> commandMap;
+        private HashMap<String, Command> commandMap;
 
         public MessageHandler() {
             this.commandMap = new HashMap<String, Command>();
@@ -137,7 +150,7 @@ public class RTCActivity extends Activity {
                 addPeer(from);
             }
 
-            commandMap.get(type).execute(peers.get(from), payload);
+            commandMap.get(type).execute(from, payload);
         }
     }
 
@@ -181,7 +194,7 @@ public class RTCActivity extends Activity {
         @Override
         public void onSignalingChange(PeerConnection.SignalingState signalingState) {
             if(signalingState == PeerConnection.SignalingState.CLOSED) {
-                removePeer(this);
+                removePeer(id);
             }
         }
 
@@ -247,16 +260,16 @@ public class RTCActivity extends Activity {
         videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", "240"));
         videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxWidth", "320"));
 
-        VideoCapturer capturer = getVideoCapturer();
-        VideoSource videoSource = factory.createVideoSource(capturer, videoConstraints);
+        VideoSource videoSource = factory.createVideoSource(getVideoCapturer(), videoConstraints);
         lMS = factory.createLocalMediaStream("ARDAMS");
-        VideoTrack videoTrack = factory.createVideoTrack("ARDAMSv0", videoSource);
-        lMS.addTrack(videoTrack);
+        lMS.addTrack(factory.createVideoTrack("ARDAMSv0", videoSource));
         lMS.addTrack(factory.createAudioTrack("ARDAMSa0"));
     }
 
-    // Cycle through likely device names for the camera and return the first
-    // capturer that works, or crash if none do.
+    /*
+    Cycle through likely device names for the camera and return the first
+    capturer that works, or crash if none do.
+    */
     private VideoCapturer getVideoCapturer() {
         String[] cameraFacing = { "back" , "front" };
         int[] cameraIndex = { 0, 1 };
@@ -282,7 +295,8 @@ public class RTCActivity extends Activity {
         peers.put(id, peer);
     }
 
-    public void removePeer(Peer peer) {
+    public void removePeer(String id) {
+        Peer peer = peers.get(id);
         peer.pc.close();
         peer.pc.dispose();
         peers.remove(peer.id);
@@ -297,14 +311,5 @@ public class RTCActivity extends Activity {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-    }
-
-    private void updateLink(final String id){
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                link.setText(host + id);
-            }
-        });
     }
 }

@@ -94,18 +94,6 @@ public class RTCActivity extends Activity {
         }
     }
 
-    public class StopCommand implements Command {
-        public void execute(String peerId, JSONObject payload) throws JSONException {
-            sendMessage(peerId, "closed", payload);
-        }
-    }
-
-    public class CloseCommand implements Command{
-        public void execute(String peerId, JSONObject payload) {
-            removePeer(peerId);
-        }
-    }
-
     public class AddIceCandidateCommand implements Command{
         public void execute(String peerId, JSONObject payload) throws JSONException {
             PeerConnection pc = peers.get(peerId).pc;
@@ -135,8 +123,6 @@ public class RTCActivity extends Activity {
             this.commandMap = new HashMap<String, Command>();
             commandMap.put("offer", new SetRemoteSDPCommand());
             commandMap.put("answer", new SetRemoteSDPCommand());
-            commandMap.put("stop", new StopCommand());
-            commandMap.put("close", new CloseCommand());
             commandMap.put("candidate", new AddIceCandidateCommand());
         }
 
@@ -193,13 +179,14 @@ public class RTCActivity extends Activity {
 
         @Override
         public void onSignalingChange(PeerConnection.SignalingState signalingState) {
-            if(signalingState == PeerConnection.SignalingState.CLOSED) {
-                removePeer(id);
-            }
         }
 
         @Override
-        public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {}
+        public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
+            if(iceConnectionState == PeerConnection.IceConnectionState.DISCONNECTED) {
+                removePeer(id);
+            }
+        }
 
         @Override
         public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {}

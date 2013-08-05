@@ -236,18 +236,20 @@ public class RTCClient {
         VideoTrack videoTrack = factory.createVideoTrack("ARDAMSv0", videoSource);
         lMS.addTrack(videoTrack);
         lMS.addTrack(factory.createAudioTrack("ARDAMSa0"));
+
+        mListener.onLocalStream(lMS);
     }
 
     public void start(){
-        JSONArray arguments = new JSONArray();
-        arguments.put(name);
+        JSONObject message = new JSONObject();
         try {
-            client.emit("readyToStream", arguments);
+            message.put("name", name);
+            message.put("privacy", true);
+            client.emit("readyToStream", new JSONArray().put(message));
         } catch (JSONException e) {
             e.printStackTrace();
         }
 
-        mListener.onLocalStream(lMS);
         mListener.onCallReady(callId);
     }
 

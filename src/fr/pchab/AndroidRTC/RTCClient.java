@@ -40,8 +40,6 @@ public class RTCClient {
     }
 
     private class CreateOfferCommand implements Command{
-
-        @Override
         public void execute(String peerId, JSONObject payload) throws JSONException {
             Peer peer = peers.get(peerId);
             peer.pc.createOffer(peer, pcConstraints);
@@ -95,7 +93,10 @@ public class RTCClient {
         public void handle(JSONObject json) throws JSONException {
             String from = json.getString("from");
             String type = json.getString("type");
-            JSONObject payload = json.getJSONObject("payload");
+            JSONObject payload = null;
+            if(!type.equals("init")) {
+                payload = json.getJSONObject("payload");
+            }
 
             // if peer is unknown, add him
             if(!peers.containsKey(from)) {
@@ -125,7 +126,6 @@ public class RTCClient {
 
         @Override
         public void onSetSuccess() {
-            pc.createAnswer(Peer.this, pcConstraints);
         }
 
         @Override
@@ -252,7 +252,7 @@ public class RTCClient {
         try {
             JSONObject message = new JSONObject();
             message.put("name", name);
-            message.put("privacy", true);
+            message.put("privacy", false);
             client.emit("readyToStream", new JSONArray().put(message));
         } catch (JSONException e) {
             e.printStackTrace();

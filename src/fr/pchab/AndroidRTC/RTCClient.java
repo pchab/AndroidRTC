@@ -39,6 +39,15 @@ public class RTCClient {
         void execute(String peerId, JSONObject payload) throws JSONException;
     }
 
+    private class CreateOfferCommand implements Command{
+
+        @Override
+        public void execute(String peerId, JSONObject payload) throws JSONException {
+            Peer peer = peers.get(peerId);
+            peer.pc.createOffer(peer, pcConstraints);
+        }
+    }
+
     private class SetRemoteSDPCommand implements Command{
         public void execute(String peerId, JSONObject payload) throws JSONException {
             Peer peer = peers.get(peerId);
@@ -77,6 +86,7 @@ public class RTCClient {
 
         public MessageHandler() {
             this.commandMap = new HashMap<String, Command>();
+            commandMap.put("init", new CreateOfferCommand());
             commandMap.put("offer", new SetRemoteSDPCommand());
             commandMap.put("answer", new SetRemoteSDPCommand());
             commandMap.put("candidate", new AddIceCandidateCommand());
@@ -106,7 +116,7 @@ public class RTCClient {
                 JSONObject payload = new JSONObject();
                 payload.put("type", sdp.type.canonicalForm());
                 payload.put("sdp", sdp.description);
-                sendMessage(id, "answer", payload);
+                sendMessage(id, sdp.type.canonicalForm(), payload);
                 pc.setLocalDescription(Peer.this, sdp);
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -236,13 +246,11 @@ public class RTCClient {
         VideoTrack videoTrack = factory.createVideoTrack("ARDAMSv0", videoSource);
         lMS.addTrack(videoTrack);
         lMS.addTrack(factory.createAudioTrack("ARDAMSa0"));
-
-        mListener.onLocalStream(lMS);
     }
 
     public void start(){
-        JSONObject message = new JSONObject();
         try {
+            JSONObject message = new JSONObject();
             message.put("name", name);
             message.put("privacy", true);
             client.emit("readyToStream", new JSONArray().put(message));
@@ -276,6 +284,7 @@ public class RTCClient {
     private void addPeer(String id) {
         Peer peer = new Peer(id);
         peer.pc.addStream(lMS, new MediaConstraints());
+        mListener.onLocalStream(lMS);
         peers.put(id, peer);
     }
 

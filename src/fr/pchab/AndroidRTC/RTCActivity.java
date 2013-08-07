@@ -14,12 +14,14 @@ import org.webrtc.VideoRenderer;
 public class RTCActivity extends Activity implements RTCClient.RTCListener{
     private static final String HOST = "http://54.214.218.3:3000/";
     private VideoStreamsView vsv;
+    private RTCClient client;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
+        // Camera display view
         Point displaySize = new Point();
         getWindowManager().getDefaultDisplay().getSize(displaySize);
         vsv = new VideoStreamsView(this, displaySize);
@@ -27,7 +29,7 @@ public class RTCActivity extends Activity implements RTCClient.RTCListener{
 
         PeerConnectionFactory.initializeAndroidGlobals(this);
 
-        RTCClient client = new RTCClient(this, HOST);
+        client = new RTCClient(this, HOST);
 
         // Settings
         client.setName("android_test");
@@ -49,7 +51,7 @@ public class RTCActivity extends Activity implements RTCClient.RTCListener{
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(getApplicationContext(), newStatus, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), newStatus, Toast.LENGTH_SHORT).show();
             }
         });
     }

@@ -12,7 +12,7 @@ import java.util.LinkedList;
 
 public class RTCClient {
     private String name;
-    private String callId;
+    private boolean privacy;
     private PeerConnectionFactory factory;
     private HashMap<String, Peer> peers = new HashMap<String, Peer>();
     private LinkedList<PeerConnection.IceServer> iceServers = new LinkedList<PeerConnection.IceServer>();
@@ -37,6 +37,13 @@ public class RTCClient {
 
     private interface Command{
         void execute(String peerId, JSONObject payload) throws JSONException;
+    }
+
+    private class CreateOfferCommand implements Command{
+        public void execute(String peerId, JSONObject payload) throws JSONException {
+            Peer peer = peers.get(peerId);
+            peer.pc.createOffer(peer, pcConstraints);
+        }
     }
 
     private class SetRemoteSDPCommand implements Command{
@@ -77,6 +84,7 @@ public class RTCClient {
 
         public MessageHandler() {
             this.commandMap = new HashMap<String, Command>();
+            commandMap.put("init", new CreateOfferCommand());
             commandMap.put("offer", new SetRemoteSDPCommand());
             commandMap.put("answer", new SetRemoteSDPCommand());
             commandMap.put("candidate", new AddIceCandidateCommand());
@@ -85,7 +93,10 @@ public class RTCClient {
         public void handle(JSONObject json) throws JSONException {
             String from = json.getString("from");
             String type = json.getString("type");
-            JSONObject payload = json.getJSONObject("payload");
+            JSONObject payload = null;
+            if(!type.equals("init")) {
+                payload = json.getJSONObject("payload");
+            }
 
             // if peer is unknown, add him
             if(!peers.containsKey(from)) {
@@ -106,7 +117,7 @@ public class RTCClient {
                 JSONObject payload = new JSONObject();
                 payload.put("type", sdp.type.canonicalForm());
                 payload.put("sdp", sdp.description);
-                sendMessage(id, "answer", payload);
+                sendMessage(id, sdp.type.canonicalForm(), payload);
                 pc.setLocalDescription(Peer.this, sdp);
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -115,7 +126,6 @@ public class RTCClient {
 
         @Override
         public void onSetSuccess() {
-            pc.createAnswer(Peer.this, pcConstraints);
         }
 
         @Override
@@ -182,11 +192,14 @@ public class RTCClient {
             }
 
             @Override
-            public void on(final String event, final JSONArray arguments) {
+            public void on(String event, JSONArray arguments) {
                 try {
-                    if(event.equals("id")) callId = arguments.getString(0);
-                    JSONObject json = arguments.getJSONObject(0);
-                    messageHandler.handle(json);
+                    if(event.equals("id")) {
+                        mListener.onCallReady(arguments.getString(0));
+                    } else {
+                        JSONObject json = arguments.getJSONObject(0);
+                        messageHandler.handle(json);
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -225,6 +238,10 @@ public class RTCClient {
         this.name = name;
     }
 
+    public void setPrivacy(boolean privacy){
+        this.privacy = privacy;
+    }
+
     public void setCamera(String cameraFacing, String height, String width){
         this.cameraFacing = cameraFacing;
         MediaConstraints videoConstraints = new MediaConstraints();
@@ -236,21 +253,17 @@ public class RTCClient {
         VideoTrack videoTrack = factory.createVideoTrack("ARDAMSv0", videoSource);
         lMS.addTrack(videoTrack);
         lMS.addTrack(factory.createAudioTrack("ARDAMSa0"));
-
-        mListener.onLocalStream(lMS);
     }
 
     public void start(){
-        JSONObject message = new JSONObject();
         try {
+            JSONObject message = new JSONObject();
             message.put("name", name);
-            message.put("privacy", true);
+            message.put("privacy", privacy);
             client.emit("readyToStream", new JSONArray().put(message));
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
-        mListener.onCallReady(callId);
     }
 
     /*
@@ -276,6 +289,7 @@ public class RTCClient {
     private void addPeer(String id) {
         Peer peer = new Peer(id);
         peer.pc.addStream(lMS, new MediaConstraints());
+        mListener.onLocalStream(lMS);
         peers.put(id, peer);
     }
 

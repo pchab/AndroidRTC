@@ -12,7 +12,7 @@ import java.util.LinkedList;
 
 public class RTCClient {
     private String name;
-    private String callId;
+    private boolean privacy;
     private PeerConnectionFactory factory;
     private HashMap<String, Peer> peers = new HashMap<String, Peer>();
     private LinkedList<PeerConnection.IceServer> iceServers = new LinkedList<PeerConnection.IceServer>();
@@ -192,11 +192,14 @@ public class RTCClient {
             }
 
             @Override
-            public void on(final String event, final JSONArray arguments) {
+            public void on(String event, JSONArray arguments) {
                 try {
-                    if(event.equals("id")) callId = arguments.getString(0);
-                    JSONObject json = arguments.getJSONObject(0);
-                    messageHandler.handle(json);
+                    if(event.equals("id")) {
+                        mListener.onCallReady(arguments.getString(0));
+                    } else {
+                        JSONObject json = arguments.getJSONObject(0);
+                        messageHandler.handle(json);
+                    }
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -235,6 +238,10 @@ public class RTCClient {
         this.name = name;
     }
 
+    public void setPrivacy(boolean privacy){
+        this.privacy = privacy;
+    }
+
     public void setCamera(String cameraFacing, String height, String width){
         this.cameraFacing = cameraFacing;
         MediaConstraints videoConstraints = new MediaConstraints();
@@ -252,13 +259,11 @@ public class RTCClient {
         try {
             JSONObject message = new JSONObject();
             message.put("name", name);
-            message.put("privacy", false);
+            message.put("privacy", privacy);
             client.emit("readyToStream", new JSONArray().put(message));
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
-        mListener.onCallReady(callId);
     }
 
     /*

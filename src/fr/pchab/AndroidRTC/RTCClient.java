@@ -191,6 +191,9 @@ public class RTCClient {
         public Peer(String id) {
             this.pc = factory.createPeerConnection(iceServers, pcConstraints, this);
             this.id = id;
+
+            pc.addStream(lMS, new MediaConstraints());
+
             mListener.onStatusChanged("CONNECTING");
         }
     }
@@ -241,6 +244,8 @@ public class RTCClient {
         VideoTrack videoTrack = factory.createVideoTrack("ARDAMSv0", videoSource);
         lMS.addTrack(videoTrack);
         lMS.addTrack(factory.createAudioTrack("ARDAMSa0"));
+
+        mListener.onLocalStream(lMS);
     }
 
     public void start(){
@@ -276,8 +281,6 @@ public class RTCClient {
 
     private void addPeer(String id) {
         Peer peer = new Peer(id);
-        peer.pc.addStream(lMS, new MediaConstraints());
-        mListener.onLocalStream(lMS);
         peers.put(id, peer);
     }
 

@@ -1,23 +1,26 @@
 package fr.pchab.AndroidRTC;
 
-import com.codebutler.android_websockets.SocketIOClient;
+import android.os.Handler;
+import com.koushikdutta.async.http.socketio.Acknowledge;
+import com.koushikdutta.async.http.socketio.ConnectCallback;
+import com.koushikdutta.async.http.socketio.EventCallback;
+import com.koushikdutta.async.http.socketio.SocketIOClient;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.*;
 
-import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedList;
 
 public class RTCClient {
-    private String name;
-    private boolean privacy;
+    private String name = "android_test";
     private PeerConnectionFactory factory;
     private HashMap<String, Peer> peers = new HashMap<String, Peer>();
     private LinkedList<PeerConnection.IceServer> iceServers = new LinkedList<PeerConnection.IceServer>();
     private MediaConstraints pcConstraints = new MediaConstraints();
     private MediaStream lMS;
+    private boolean privacy = true;
     private String cameraFacing = "back";
     private RTCListener mListener;
     private SocketIOClient client;
@@ -79,7 +82,7 @@ public class RTCClient {
         client.emit("message", new JSONArray().put(message));
     }
 
-    private class MessageHandler {
+    private class MessageHandler implements EventCallback{
         private HashMap<String, Command> commandMap;
 
         public MessageHandler() {
@@ -90,20 +93,30 @@ public class RTCClient {
             commandMap.put("candidate", new AddIceCandidateCommand());
         }
 
-        public void handle(JSONObject json) throws JSONException {
-            String from = json.getString("from");
-            String type = json.getString("type");
-            JSONObject payload = null;
-            if(!type.equals("init")) {
-                payload = json.getJSONObject("payload");
-            }
+        @Override
+        public void onEvent(String s, JSONArray jsonArray, Acknowledge acknowledge) {
+            try {
+                if(s.equals("id")) {
+                    mListener.onCallReady(jsonArray.getString(0));
+                } else {
+                    JSONObject json = jsonArray.getJSONObject(0);
+                    String from = json.getString("from");
+                    String type = json.getString("type");
+                    JSONObject payload = null;
+                    if(!type.equals("init")) {
+                        payload = json.getJSONObject("payload");
+                    }
 
-            // if peer is unknown, add him
-            if(!peers.containsKey(from)) {
-                addPeer(from);
-            }
+                    // if peer is unknown, add him
+                    if(!peers.containsKey(from)) {
+                        addPeer(from);
+                    }
 
-            commandMap.get(type).execute(from, payload);
+                    commandMap.get(type).execute(from, payload);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -186,46 +199,21 @@ public class RTCClient {
         mListener = listener;
         factory = new PeerConnectionFactory();
 
-        client = new SocketIOClient(URI.create(host), new SocketIOClient.Handler() {
-            @Override
-            public void onConnect() {
-            }
+        SocketIOClient.connect(host, new ConnectCallback() {
 
             @Override
-            public void on(String event, JSONArray arguments) {
-                try {
-                    if(event.equals("id")) {
-                        mListener.onCallReady(arguments.getString(0));
-                    } else {
-                        JSONObject json = arguments.getJSONObject(0);
-                        messageHandler.handle(json);
-                    }
-                } catch (JSONException e) {
-                    e.printStackTrace();
+            public void onConnectCompleted(Exception ex, SocketIOClient socket) {
+                if (ex != null) {
+                    return;
                 }
-            }
 
-            @Override
-            public void onJSON(JSONObject json) {
-            }
+                client = socket;
 
-            @Override
-            public void onMessage(String message) {
+                // specify which events you are interested in receiving
+                client.addListener("id", messageHandler);
+                client.addListener("message", messageHandler);
             }
-
-            @Override
-            public void onDisconnect(int code, String reason) {
-            }
-
-            @Override
-            public void onError(Exception error) {
-            }
-
-            @Override
-            public void onConnectToEndpoint(String endpoint) {
-            }
-        });
-        client.connect();
+        }, new Handler());
 
         iceServers.add(new PeerConnection.IceServer("stun:23.21.150.121"));
         iceServers.add(new PeerConnection.IceServer("stun:stun.l.google.com:19302"));

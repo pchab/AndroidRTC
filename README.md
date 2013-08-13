@@ -4,10 +4,12 @@
 
 - an Android client for [ProjectRTC](https://github.com/pchab/ProjectRTC)
 
-This client can stream its back cam to multiple peers :
+## How to
+
 - Launch the app
-- Share your stream
-- OR Go to 54.214.218.3:3000 in a (Chrome) browser and choose the "android_test" stream
+- Choose your config and share your stream
+- If you chose to make a private stream, only those who have the correct link will see the stream
+- If you chose to make a public stream, the stream will be visible at 54.214.218.3:3000
 
 If you can't compile it yet, you can still download the apk [here](https://github.com/pchab/ProjectRTC/raw/master/AndroidRTC.apk).
 
@@ -19,7 +21,7 @@ If you can't compile it yet, you can still download the apk [here](https://githu
 If you want to use them in your project, I recommend working with IntelliJ IDEA :
 
 - Start a new android application project
-- Add the .jar in the libs folder
+- Add the .jar and .so in the libs folder
 - Right-click "add as library"
 
 ## Author

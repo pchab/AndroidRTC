@@ -188,6 +188,9 @@ public class RTCClient {
             mListener.onRemoveRemoteStream(mediaStream);
         }
 
+        @Override
+        public void onDataChannel(DataChannel dataChannel) {}
+
         public Peer(String id) {
             this.pc = factory.createPeerConnection(iceServers, pcConstraints, this);
             this.id = id;

@@ -4,13 +4,6 @@
 
 - an Android client for [ProjectRTC](https://github.com/pchab/ProjectRTC)
 
-## How to
-
-- Launch the app
-- Choose your config and share your stream
-- If you chose to make a private stream, only those who have the correct link will see the stream
-- If you chose to make a public stream, the stream will be visible at 54.214.218.3:3000
-
 If you can't compile it yet, you can still download the apk [here](https://github.com/pchab/ProjectRTC/raw/master/AndroidRTC.apk).
 
 ## Libraries

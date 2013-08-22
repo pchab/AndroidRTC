@@ -25,7 +25,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.appspot.apprtc;
+package fr.pchab.AndroidRTC;
 
 import org.webrtc.VideoRenderer.I420Frame;
 

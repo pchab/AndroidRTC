@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AndroidRTC</string>
-    <string name="default_name">android_test</string>
-    <string name="stream">Stream</string>
-    <string name="privacy_setting">Private</string>
-    <string name="link">link</string>
+    <string name="host">54.214.218.3</string>
 </resources>

@@ -16,10 +16,10 @@ import org.webrtc.VideoRenderer;
 import java.util.List;
 
 public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
-  private final String HOST = "http://54.214.218.3:3000/";
   private final static int VIDEO_CALL_SENT = 666;
   private VideoStreamsView vsv;
   private WebRtcClient client;
+  private String mSocketAddress;
   private String callerId;
 
 
@@ -27,6 +27,8 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     requestWindowFeature(Window.FEATURE_NO_TITLE);
+    mSocketAddress = "http://" + getResources().getString(R.string.host);
+    mSocketAddress += (":"+getResources().getString(R.string.port)+"/");
 
     PeerConnectionFactory.initializeAndroidGlobals(this);
 
@@ -34,7 +36,7 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
     Point displaySize = new Point();
     getWindowManager().getDefaultDisplay().getSize(displaySize);
     vsv = new VideoStreamsView(this, displaySize);
-    client = new WebRtcClient(this, HOST);
+    client = new WebRtcClient(this, mSocketAddress);
 
     final Intent intent = getIntent();
     final String action = intent.getAction();
@@ -83,7 +85,7 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
 
   public void call(String callId) {
     Intent msg = new Intent(Intent.ACTION_SEND);
-    msg.putExtra(Intent.EXTRA_TEXT, HOST + callId);
+    msg.putExtra(Intent.EXTRA_TEXT, mSocketAddress + callId);
     msg.setType("text/plain");
     startActivityForResult(Intent.createChooser(msg, "Call someone :"), VIDEO_CALL_SENT);
   }

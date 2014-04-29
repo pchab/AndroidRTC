@@ -1,6 +1,7 @@
 package fr.pchab.AndroidRTC;
 
 import android.os.Handler;
+import android.util.Log;
 import com.koushikdutta.async.http.socketio.Acknowledge;
 import com.koushikdutta.async.http.socketio.ConnectCallback;
 import com.koushikdutta.async.http.socketio.EventCallback;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 
 class WebRtcClient {
+  private final static String TAG = WebRtcClient.class.getCanonicalName();
   private final static int MAX_PEER = 2;
   private boolean[] endPoints = new boolean[MAX_PEER];
   private PeerConnectionFactory factory;
@@ -222,6 +224,10 @@ class WebRtcClient {
   }
 
   public WebRtcClient(RTCListener listener, String host) {
+
+
+      Log.d(TAG, "WebRtcClient creation.");
+
     mListener = listener;
     factory = new PeerConnectionFactory();
 

@@ -1,17 +1,29 @@
 package fr.pchab.AndroidRTC;
 
+import java.util.HashMap;
+import java.util.LinkedList;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.webrtc.DataChannel;
+import org.webrtc.IceCandidate;
+import org.webrtc.MediaConstraints;
+import org.webrtc.MediaStream;
+import org.webrtc.PeerConnection;
+import org.webrtc.PeerConnectionFactory;
+import org.webrtc.SdpObserver;
+import org.webrtc.SessionDescription;
+import org.webrtc.VideoCapturer;
+import org.webrtc.VideoSource;
+
 import android.os.Handler;
+import android.util.Log;
+
 import com.koushikdutta.async.http.socketio.Acknowledge;
 import com.koushikdutta.async.http.socketio.ConnectCallback;
 import com.koushikdutta.async.http.socketio.EventCallback;
 import com.koushikdutta.async.http.socketio.SocketIOClient;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.webrtc.*;
-
-import java.util.HashMap;
-import java.util.LinkedList;
 
 class WebRtcClient {
   private final static int MAX_PEER = 2;
@@ -24,6 +36,7 @@ class WebRtcClient {
   private RTCListener mListener;
   private SocketIOClient client;
   private final MessageHandler messageHandler = new MessageHandler();
+  private final static String TAG = WebRtcClient.class.getCanonicalName();
 
   public interface RTCListener{
     void onCallReady(String callId);
@@ -43,6 +56,7 @@ class WebRtcClient {
 
   private class CreateOfferCommand implements Command{
     public void execute(String peerId, JSONObject payload) throws JSONException {
+    	Log.d(TAG,"CreateOfferCommand");
       Peer peer = peers.get(peerId);
       peer.pc.createOffer(peer, pcConstraints);
     }
@@ -50,6 +64,7 @@ class WebRtcClient {
 
   private class CreateAnswerCommand implements Command{
     public void execute(String peerId, JSONObject payload) throws JSONException {
+    	Log.d(TAG,"CreateAnswerCommand");
       Peer peer = peers.get(peerId);
       SessionDescription sdp = new SessionDescription(
                                                       SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
@@ -62,6 +77,7 @@ class WebRtcClient {
 
   private class SetRemoteSDPCommand implements Command{
     public void execute(String peerId, JSONObject payload) throws JSONException {
+    	Log.d(TAG,"SetRemoteSDPCommand");
       Peer peer = peers.get(peerId);
       SessionDescription sdp = new SessionDescription(
                                                       SessionDescription.Type.fromCanonicalForm(payload.getString("type")),
@@ -73,6 +89,7 @@ class WebRtcClient {
 
   private class AddIceCandidateCommand implements Command{
     public void execute(String peerId, JSONObject payload) throws JSONException {
+    	Log.d(TAG,"AddIceCandidateCommand");
       PeerConnection pc = peers.get(peerId).pc;
       if (pc.getRemoteDescription() != null) {
         IceCandidate candidate = new IceCandidate(
@@ -107,6 +124,7 @@ class WebRtcClient {
     @Override
     public void onEvent(String s, JSONArray jsonArray, Acknowledge acknowledge) {
       try {
+    	  Log.d(TAG,"MessageHandler.onEvent() "+ (s == null ? "nil" : s));
         if(s.equals("id")) {
           mListener.onCallReady(jsonArray.getString(0));
         } else {
@@ -196,6 +214,8 @@ class WebRtcClient {
 
     @Override
     public void onAddStream(MediaStream mediaStream) {
+    	Log.d(TAG,"onAddStream "+mediaStream.label());
+
       // remote streams are displayed from 1 to MAX_PEER (0 is localStream)
       mListener.onAddRemoteStream(mediaStream, endPoint+1);
     }
@@ -211,6 +231,7 @@ class WebRtcClient {
     public void onDataChannel(DataChannel dataChannel) {}
 
     public Peer(String id, int endPoint) {
+    	Log.d(TAG,"new Peer: "+id + " " + endPoint);
       this.pc = factory.createPeerConnection(iceServers, pcConstraints, this);
       this.id = id;
       this.endPoint = endPoint;
@@ -222,7 +243,6 @@ class WebRtcClient {
   }
 
   public WebRtcClient(RTCListener listener, String host) {
-
     mListener = listener;
     factory = new PeerConnectionFactory();
 
@@ -231,9 +251,10 @@ class WebRtcClient {
       @Override
       public void onConnectCompleted(Exception ex, SocketIOClient socket) {
         if (ex != null) {
+            Log.e(TAG,"WebRtcClient connect failed: "+ex.getMessage());
           return;
         }
-
+        Log.d(TAG,"WebRtcClient connected.");
         client = socket;
 
         // specify which events you are interested in receiving

@@ -294,7 +294,6 @@ class WebRtcClient {
     try {
       JSONObject message = new JSONObject();
       message.put("name", name);
-      message.put("privacy", privacy);
       client.emit("readyToStream", new JSONArray().put(message));
     } catch (JSONException e) {
       e.printStackTrace();

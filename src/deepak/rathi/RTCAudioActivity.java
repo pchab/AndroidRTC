@@ -1,5 +1,30 @@
 package deepak.rathi;
 
+/**
+ * Copyright Deepak Rathi (https://github.com/deepak-rathi)
+ * 
+ * STEPS FOLLOWED TO CREATE AUDIO CALL
+ * - In WebRtcClient :
+create a new method that does the same thing as setCamera but without video
+:
+
+  public void setAudio(){
+    lMS = factory.createLocalMediaStream("ARDAMS");
+    lMS.addTrack(factory.createAudioTrack("ARDAMSa0"));
+
+    mListener.onLocalStream(lMS);
+  }
+
+- In RTCactivity :
+in startCam() call setAudio() instead of setCamera(...)
+
+At this point, you should still have audio working and a green (or black)
+screen.
+You can then :
+- Remove the videoStreamsView and videoRenderer from RTCactivity
+- Change the PeerConnection Constraints "OfferToReceiveVideo" to false
+ */
+
 import fr.pchab.AndroidRTC.R;
 import fr.pchab.AndroidRTC.VideoStreamsView;
 import fr.pchab.AndroidRTC.WebRtcClient;
@@ -104,8 +129,8 @@ public class RTCAudioActivity extends Activity implements WebRtcClient.RTCListen
 
 	  public void startCam() {
 	    setContentView(vsv);
-	    // Camera settings
-	    //client.setCamera("front", "640", "480");
+	    // Audio call settings
+	    
 	    client.setAudio();
 	    client.start("android_test", true);
 	 }
@@ -122,44 +147,17 @@ public class RTCAudioActivity extends Activity implements WebRtcClient.RTCListen
 
 	  @Override
 	  public void onLocalStream(MediaStream localStream) {
-	    //localStream.videoTracks.get(0).addRenderer(new VideoRenderer(new VideoCallbacks(vsv, 0)));
+	   
 	  }
 
 	  @Override
 	  public void onAddRemoteStream(MediaStream remoteStream, int endPoint) {
-	    //remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(new VideoCallbacks(vsv, endPoint)));
-	    //vsv.shouldDraw[endPoint] = true;
+	   
 	  }
 
 	  @Override
 	  public void onRemoveRemoteStream(MediaStream remoteStream, int endPoint) {
-	    //remoteStream.videoTracks.get(0).dispose();
-	    //vsv.shouldDraw[endPoint] = false;
+	   
 	  }
 
-	  // Implementation detail: bridge the VideoRenderer.Callbacks interface to the
-	  // VideoStreamsView implementation.
-//	  private class VideoCallbacks implements VideoRenderer.Callbacks {
-//	    private final VideoStreamsView view;
-//	    private final int stream;
-//
-//	    public VideoCallbacks(VideoStreamsView view, int stream) {
-//	      this.view = view;
-//	      this.stream = stream;
-//	    }
-//
-//	    @Override
-//	    public void setSize(final int width, final int height) {
-//	      view.queueEvent(new Runnable() {
-//	        public void run() {
-//	          view.setSize(stream, width, height);
-//	        }
-//	      });
-//	    }
-//
-//	    @Override
-//	    public void renderFrame(VideoRenderer.I420Frame frame) {
-//	      view.queueFrame(stream, frame);
-//	    }
-//	  }
 }

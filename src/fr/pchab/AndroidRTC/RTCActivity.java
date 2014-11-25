@@ -12,7 +12,6 @@ import org.json.JSONException;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.VideoRenderer;
-
 import java.util.List;
 
 public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
@@ -133,7 +132,7 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
 
   // Implementation detail: bridge the VideoRenderer.Callbacks interface to the
   // VideoStreamsView implementation.
-  private class VideoCallbacks implements VideoRenderer.Callbacks {
+  public class VideoCallbacks implements VideoRenderer.Callbacks {
     private final VideoStreamsView view;
     private final int stream;
 

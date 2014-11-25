@@ -2,7 +2,8 @@ package fr.pchab.AndroidRTC;
 
 import java.util.HashMap;
 import java.util.LinkedList;
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -25,7 +26,7 @@ import com.koushikdutta.async.http.socketio.ConnectCallback;
 import com.koushikdutta.async.http.socketio.EventCallback;
 import com.koushikdutta.async.http.socketio.SocketIOClient;
 
-class WebRtcClient {
+public class WebRtcClient {
   private final static int MAX_PEER = 2;
   private boolean[] endPoints = new boolean[MAX_PEER];
   private PeerConnectionFactory factory;
@@ -161,8 +162,11 @@ class WebRtcClient {
     private int endPoint;
 
     @Override
-    public void onCreateSuccess(final SessionDescription sdp) {
+    public void onCreateSuccess(final SessionDescription origSdp) {
       try {
+    	//changed default audio codec from OPUCS(ossy audio codec format) to iSAC
+    	SessionDescription sdp = new SessionDescription(origSdp.type,
+					preferISAC(origSdp.description));
         JSONObject payload = new JSONObject();
         payload.put("type", sdp.type.canonicalForm());
         payload.put("sdp", sdp.description);
@@ -282,6 +286,12 @@ class WebRtcClient {
 
     mListener.onLocalStream(lMS);
   }
+  
+  public void setAudio() {
+		lMS = factory.createLocalMediaStream("ARDAMS");
+		lMS.addTrack(factory.createAudioTrack("ARDAMSa0"));
+		mListener.onLocalStream(lMS);
+	}
 
   private int findEndPoint() {
     for(int i = 0; i < MAX_PEER; i++) {
@@ -335,4 +345,53 @@ class WebRtcClient {
 
     endPoints[peer.endPoint] = false;
   }
+  
+//Mangle SDP to prefer ISAC/16000 over any other audio codec.
+	private String preferISAC(String sdpDescription) {
+		String[] lines = sdpDescription.split("\n");
+		int mLineIndex = -1;
+		String isac16kRtpMap = null;
+		Pattern isac16kPattern = Pattern
+				.compile("^a=rtpmap:(\\d+) ISAC/16000[\r]?$");
+		for (int i = 0; (i < lines.length)
+				&& (mLineIndex == -1 || isac16kRtpMap == null); ++i) {
+			if (lines[i].startsWith("m=audio ")) {
+				mLineIndex = i;
+				continue;
+			}
+			Matcher isac16kMatcher = isac16kPattern.matcher(lines[i]);
+			if (isac16kMatcher.matches()) {
+				isac16kRtpMap = isac16kMatcher.group(1);
+				continue;
+			}
+		}
+		if (mLineIndex == -1) {
+			Log.d(TAG, "No m=audio line, so can't prefer iSAC");
+			return sdpDescription;
+		}
+		if (isac16kRtpMap == null) {
+			Log.d(TAG, "No ISAC/16000 line, so can't prefer iSAC");
+			return sdpDescription;
+		}
+		String[] origMLineParts = lines[mLineIndex].split(" ");
+		StringBuilder newMLine = new StringBuilder();
+		int origPartIndex = 0;
+		// Format is: m=<media> <port> <proto> <fmt> ...
+		newMLine.append(origMLineParts[origPartIndex++]).append(" ");
+		newMLine.append(origMLineParts[origPartIndex++]).append(" ");
+		newMLine.append(origMLineParts[origPartIndex++]).append(" ");
+		newMLine.append(isac16kRtpMap).append(" ");
+		for (; origPartIndex < origMLineParts.length; ++origPartIndex) {
+			if (!origMLineParts[origPartIndex].equals(isac16kRtpMap)) {
+				newMLine.append(origMLineParts[origPartIndex]).append(" ");
+			}
+		}
+		lines[mLineIndex] = newMLine.toString();
+		StringBuilder newSdpDescription = new StringBuilder();
+		for (String line : lines) {
+			newSdpDescription.append(line).append("\n");
+		}
+		return newSdpDescription.toString();
+	}
+	
 }

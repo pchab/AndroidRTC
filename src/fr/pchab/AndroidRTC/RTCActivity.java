@@ -5,38 +5,68 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Point;
+import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Window;
 import android.widget.Toast;
 import org.json.JSONException;
 import org.webrtc.MediaStream;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.VideoRenderer;
+import org.webrtc.VideoRendererGui;
 
 import java.util.List;
 
-public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
+public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
   private final static int VIDEO_CALL_SENT = 666;
-  private VideoStreamsView vsv;
+  private static final String VIDEO_CODEC_VP9 = "VP9";
+  private static final String AUDIO_CODEC_OPUS = "opus";
+  // Local preview screen position before call is connected.
+  private static final int LOCAL_X_CONNECTING = 0;
+  private static final int LOCAL_Y_CONNECTING = 0;
+  private static final int LOCAL_WIDTH_CONNECTING = 100;
+  private static final int LOCAL_HEIGHT_CONNECTING = 100;
+  // Local preview screen position after call is connected.
+  private static final int LOCAL_X_CONNECTED = 72;
+  private static final int LOCAL_Y_CONNECTED = 72;
+  private static final int LOCAL_WIDTH_CONNECTED = 25;
+  private static final int LOCAL_HEIGHT_CONNECTED = 25;
+  // Remote video screen position
+  private static final int REMOTE_X = 0;
+  private static final int REMOTE_Y = 0;
+  private static final int REMOTE_WIDTH = 100;
+  private static final int REMOTE_HEIGHT = 100;
+  private VideoRendererGui.ScalingType scalingType = VideoRendererGui.ScalingType.SCALE_ASPECT_FILL;
+  private VideoRenderer.Callbacks localRender;
+  private VideoRenderer.Callbacks remoteRender;
   private WebRtcClient client;
   private String mSocketAddress;
   private String callerId;
-
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     requestWindowFeature(Window.FEATURE_NO_TITLE);
+    setContentView(R.layout.main);
     mSocketAddress = "http://" + getResources().getString(R.string.host);
-    mSocketAddress += (":"+getResources().getString(R.string.port)+"/");
+    mSocketAddress += (":" + getResources().getString(R.string.port) + "/");
 
-    PeerConnectionFactory.initializeAndroidGlobals(this);
+    GLSurfaceView vsv = (GLSurfaceView) findViewById(R.id.glview_call);
+    VideoRendererGui.setView(vsv, new Runnable() {
+      @Override
+      public void run() {
+        init();
+      }
+    });
 
     // Camera display view
-    Point displaySize = new Point();
-    getWindowManager().getDefaultDisplay().getSize(displaySize);
-    vsv = new VideoStreamsView(this, displaySize);
-    client = new WebRtcClient(this, mSocketAddress);
+    remoteRender = VideoRendererGui.create(
+            REMOTE_X, REMOTE_Y,
+            REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
+    localRender = VideoRendererGui.create(
+            LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
+            LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING, scalingType, true);
 
     final Intent intent = getIntent();
     final String action = intent.getAction();
@@ -47,8 +77,17 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
     }
   }
 
-  public void onConfigurationChanged(Configuration newConfig)
-  {
+  private void init() {
+    Point displaySize = new Point();
+    getWindowManager().getDefaultDisplay().getSize(displaySize);
+    PeerConnectionParameters params = new PeerConnectionParameters(
+            true, false, displaySize.x, displaySize.y, 30, 1, VIDEO_CODEC_VP9, true, 1, AUDIO_CODEC_OPUS, true);
+    PeerConnectionFactory.initializeAndroidGlobals(this, true, true,
+            params.videoCodecHwAcceleration, VideoRendererGui.getEGLContext());
+    client = new WebRtcClient(this, mSocketAddress);
+  }
+
+  public void onConfigurationChanged(Configuration newConfig) {
     super.onConfigurationChanged(newConfig);
     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
   }
@@ -56,18 +95,17 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
   @Override
   public void onPause() {
     super.onPause();
-    vsv.onPause();
   }
 
   @Override
   public void onResume() {
     super.onResume();
-    vsv.onResume();
   }
 
   @Override
   public void onCallReady(String callId) {
-    if(callerId != null) {
+    Log.d("POUET", callId);
+    if (callerId != null) {
       try {
         answer(callerId);
       } catch (JSONException e) {
@@ -92,16 +130,15 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
 
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-    if(requestCode == VIDEO_CALL_SENT) {
+    if (requestCode == VIDEO_CALL_SENT) {
       startCam();
     }
   }
 
   public void startCam() {
-    setContentView(vsv);
     // Camera settings
-    client.setCamera("front", "640", "480");
-    client.start("android_test", true);
+    client.setCamera("640", "480");
+    client.start("android_test");
   }
 
   @Override
@@ -116,44 +153,23 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener{
 
   @Override
   public void onLocalStream(MediaStream localStream) {
-    localStream.videoTracks.get(0).addRenderer(new VideoRenderer(new VideoCallbacks(vsv, 0)));
+    localStream.videoTracks.get(0).addRenderer(new VideoRenderer(localRender));
+    VideoRendererGui.update(localRender,
+            LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
+            LOCAL_WIDTH_CONNECTED, LOCAL_HEIGHT_CONNECTED,
+            VideoRendererGui.ScalingType.SCALE_ASPECT_FIT);
   }
 
   @Override
   public void onAddRemoteStream(MediaStream remoteStream, int endPoint) {
-    remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(new VideoCallbacks(vsv, endPoint)));
-    vsv.shouldDraw[endPoint] = true;
+    remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRender));
+    VideoRendererGui.update(remoteRender,
+            REMOTE_X, REMOTE_Y,
+            REMOTE_WIDTH, REMOTE_HEIGHT, scalingType);
   }
 
   @Override
   public void onRemoveRemoteStream(MediaStream remoteStream, int endPoint) {
-    remoteStream.videoTracks.get(0).dispose();
-    vsv.shouldDraw[endPoint] = false;
-  }
-
-  // Implementation detail: bridge the VideoRenderer.Callbacks interface to the
-  // VideoStreamsView implementation.
-  private class VideoCallbacks implements VideoRenderer.Callbacks {
-    private final VideoStreamsView view;
-    private final int stream;
-
-    public VideoCallbacks(VideoStreamsView view, int stream) {
-      this.view = view;
-      this.stream = stream;
-    }
-
-    @Override
-    public void setSize(final int width, final int height) {
-      view.queueEvent(new Runnable() {
-        public void run() {
-          view.setSize(stream, width, height);
-        }
-      });
-    }
-
-    @Override
-    public void renderFrame(VideoRenderer.I420Frame frame) {
-      view.queueFrame(stream, frame);
-    }
+    VideoRendererGui.remove(remoteRender);
   }
 }

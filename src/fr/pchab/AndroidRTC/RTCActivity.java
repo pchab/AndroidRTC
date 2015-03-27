@@ -38,6 +38,7 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
   private static final int REMOTE_WIDTH = 100;
   private static final int REMOTE_HEIGHT = 100;
   private VideoRendererGui.ScalingType scalingType = VideoRendererGui.ScalingType.SCALE_ASPECT_FILL;
+  private GLSurfaceView vsv;
   private VideoRenderer.Callbacks localRender;
   private VideoRenderer.Callbacks remoteRender;
   private WebRtcClient client;
@@ -52,7 +53,9 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
     mSocketAddress = "http://" + getResources().getString(R.string.host);
     mSocketAddress += (":" + getResources().getString(R.string.port) + "/");
 
-    GLSurfaceView vsv = (GLSurfaceView) findViewById(R.id.glview_call);
+    vsv = (GLSurfaceView) findViewById(R.id.glview_call);
+    vsv.setPreserveEGLContextOnPause(true);
+    vsv.setKeepScreenOn(true);
     VideoRendererGui.setView(vsv, new Runnable() {
       @Override
       public void run() {
@@ -95,16 +98,23 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
   @Override
   public void onPause() {
     super.onPause();
+    vsv.onPause();
+    if(client != null) {
+      client.stopVideoSource();
+    }
   }
 
   @Override
   public void onResume() {
     super.onResume();
+    vsv.onResume();
+    if(client != null) {
+      client.restartVideoSource();
+    }
   }
 
   @Override
   public void onCallReady(String callId) {
-    Log.d("POUET", callId);
     if (callerId != null) {
       try {
         answer(callerId);

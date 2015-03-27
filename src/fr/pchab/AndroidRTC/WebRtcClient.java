@@ -21,6 +21,7 @@ class WebRtcClient {
   private LinkedList<PeerConnection.IceServer> iceServers = new LinkedList<>();
   private MediaConstraints pcConstraints = new MediaConstraints();
   private MediaStream localMS;
+  private VideoSource videoSource;
   private RTCListener mListener;
   private Socket client;
   private final static String TAG = WebRtcClient.class.getCanonicalName();
@@ -111,7 +112,6 @@ class WebRtcClient {
     public Emitter.Listener onMessage = new Emitter.Listener() {
       @Override
       public void call(Object... args) {
-        Log.d("POUET", "receive message "+args[0].toString());
         JSONObject data = (JSONObject) args[0];
         try {
           String from = data.getString("from");
@@ -262,13 +262,25 @@ class WebRtcClient {
     videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", height));
     videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxWidth", width));
 
-    VideoSource videoSource = factory.createVideoSource(getVideoCapturer(), videoConstraints);
+    videoSource = factory.createVideoSource(getVideoCapturer(), videoConstraints);
     AudioSource audioSource = factory.createAudioSource(new MediaConstraints());
     localMS = factory.createLocalMediaStream("ARDAMS");
     localMS.addTrack(factory.createVideoTrack("ARDAMSv0", videoSource));
     localMS.addTrack(factory.createAudioTrack("ARDAMSa0", audioSource));
 
     mListener.onLocalStream(localMS);
+  }
+
+  public void stopVideoSource() {
+    if(videoSource != null) {
+      videoSource.stop();
+    }
+  }
+
+  public void restartVideoSource() {
+    if(videoSource != null) {
+      videoSource.restart();
+    }
   }
 
   private int findEndPoint() {

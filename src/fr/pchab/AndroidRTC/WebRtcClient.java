@@ -2,6 +2,7 @@ package fr.pchab.AndroidRTC;
 
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 import com.github.nkzawa.socketio.client.IO;
@@ -19,6 +20,7 @@ class WebRtcClient {
   private PeerConnectionFactory factory;
   private HashMap<String, Peer> peers = new HashMap<>();
   private LinkedList<PeerConnection.IceServer> iceServers = new LinkedList<>();
+  private PeerConnectionParameters pcParams;
   private MediaConstraints pcConstraints = new MediaConstraints();
   private MediaStream localMS;
   private VideoSource videoSource;
@@ -211,7 +213,6 @@ class WebRtcClient {
     @Override
     public void onRemoveStream(MediaStream mediaStream) {
       mListener.onRemoveRemoteStream(mediaStream, endPoint);
-
       removePeer(id);
     }
 
@@ -235,8 +236,9 @@ class WebRtcClient {
     }
   }
 
-  public WebRtcClient(RTCListener listener, String host) {
+  public WebRtcClient(RTCListener listener, String host, PeerConnectionParameters params) {
     mListener = listener;
+    pcParams = params;
     factory = new PeerConnectionFactory();
     MessageHandler messageHandler = new MessageHandler();
 
@@ -257,36 +259,47 @@ class WebRtcClient {
     pcConstraints.optional.add(new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
   }
 
-  public void setCamera(String height, String width){
-    MediaConstraints videoConstraints = new MediaConstraints();
-    videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", height));
-    videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxWidth", width));
-
-    videoSource = factory.createVideoSource(getVideoCapturer(), videoConstraints);
-    AudioSource audioSource = factory.createAudioSource(new MediaConstraints());
+  public void setCamera(){
     localMS = factory.createLocalMediaStream("ARDAMS");
-    localMS.addTrack(factory.createVideoTrack("ARDAMSv0", videoSource));
+    if(pcParams.videoCallEnabled){
+      MediaConstraints videoConstraints = new MediaConstraints();
+      videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", Integer.toString(pcParams.videoHeight)));
+      videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxWidth", Integer.toString(pcParams.videoWidth)));
+      videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxFrameRate", Integer.toString(pcParams.videoFps)));
+      videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("minFrameRate", Integer.toString(pcParams.videoFps)));
+
+      videoSource = factory.createVideoSource(getVideoCapturer(), videoConstraints);
+      localMS.addTrack(factory.createVideoTrack("ARDAMSv0", videoSource));
+    }
+
+    AudioSource audioSource = factory.createAudioSource(new MediaConstraints());
     localMS.addTrack(factory.createAudioTrack("ARDAMSa0", audioSource));
 
     mListener.onLocalStream(localMS);
   }
 
   public void stopVideoSource() {
-    if(videoSource != null) {
-      videoSource.stop();
-    }
+    if(videoSource != null) videoSource.stop();
   }
 
   public void restartVideoSource() {
-    if(videoSource != null) {
-      videoSource.restart();
+    if(videoSource != null) videoSource.restart();
+  }
+
+  public void disconnect() {
+    Iterator it = peers.values().iterator();
+    while(it.hasNext()){
+      Peer peer = (Peer) it.next();
+      peer.pc.dispose();
     }
+    videoSource.dispose();
+    factory.dispose();
+    client.disconnect();
+    client.close();
   }
 
   private int findEndPoint() {
-    for(int i = 0; i < MAX_PEER; i++) {
-      if(!endPoints[i]) return i;
-    }
+    for(int i = 0; i < MAX_PEER; i++) if (!endPoints[i]) return i;
     return MAX_PEER;
   }
 

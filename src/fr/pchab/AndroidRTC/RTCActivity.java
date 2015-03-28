@@ -2,13 +2,11 @@ package fr.pchab.AndroidRTC;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.content.res.Configuration;
 import android.graphics.Point;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Window;
+import android.view.WindowManager.LayoutParams;
 import android.widget.Toast;
 import org.json.JSONException;
 import org.webrtc.MediaStream;
@@ -49,6 +47,12 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     requestWindowFeature(Window.FEATURE_NO_TITLE);
+    getWindow().addFlags(
+            LayoutParams.FLAG_FULLSCREEN
+                    | LayoutParams.FLAG_KEEP_SCREEN_ON
+                    | LayoutParams.FLAG_DISMISS_KEYGUARD
+                    | LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                    | LayoutParams.FLAG_TURN_SCREEN_ON);
     setContentView(R.layout.main);
     mSocketAddress = "http://" + getResources().getString(R.string.host);
     mSocketAddress += (":" + getResources().getString(R.string.port) + "/");
@@ -63,7 +67,7 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
       }
     });
 
-    // Camera display view
+    // local and remote render
     remoteRender = VideoRendererGui.create(
             REMOTE_X, REMOTE_Y,
             REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
@@ -87,12 +91,7 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
             true, false, displaySize.x, displaySize.y, 30, 1, VIDEO_CODEC_VP9, true, 1, AUDIO_CODEC_OPUS, true);
     PeerConnectionFactory.initializeAndroidGlobals(this, true, true,
             params.videoCodecHwAcceleration, VideoRendererGui.getEGLContext());
-    client = new WebRtcClient(this, mSocketAddress);
-  }
-
-  public void onConfigurationChanged(Configuration newConfig) {
-    super.onConfigurationChanged(newConfig);
-    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+    client = new WebRtcClient(this, mSocketAddress, params);
   }
 
   @Override
@@ -111,6 +110,14 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
     if(client != null) {
       client.restartVideoSource();
     }
+  }
+
+  @Override
+  public void onDestroy() {
+    if(client != null) {
+      client.disconnect();
+    }
+    super.onDestroy();
   }
 
   @Override
@@ -147,7 +154,7 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
 
   public void startCam() {
     // Camera settings
-    client.setCamera("640", "480");
+    client.setCamera();
     client.start("android_test");
   }
 
@@ -165,8 +172,8 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
   public void onLocalStream(MediaStream localStream) {
     localStream.videoTracks.get(0).addRenderer(new VideoRenderer(localRender));
     VideoRendererGui.update(localRender,
-            LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
-            LOCAL_WIDTH_CONNECTED, LOCAL_HEIGHT_CONNECTED,
+            LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
+            LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING,
             VideoRendererGui.ScalingType.SCALE_ASPECT_FIT);
   }
 
@@ -176,10 +183,18 @@ public class RTCActivity extends Activity implements WebRtcClient.RTCListener {
     VideoRendererGui.update(remoteRender,
             REMOTE_X, REMOTE_Y,
             REMOTE_WIDTH, REMOTE_HEIGHT, scalingType);
+    VideoRendererGui.update(localRender,
+            LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
+            LOCAL_WIDTH_CONNECTED, LOCAL_HEIGHT_CONNECTED,
+            VideoRendererGui.ScalingType.SCALE_ASPECT_FIT);
   }
 
   @Override
   public void onRemoveRemoteStream(MediaStream remoteStream, int endPoint) {
     VideoRendererGui.remove(remoteRender);
+    VideoRendererGui.update(localRender,
+            LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
+            LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING,
+            VideoRendererGui.ScalingType.SCALE_ASPECT_FIT);
   }
 }

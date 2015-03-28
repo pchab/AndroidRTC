@@ -3,7 +3,6 @@
 ## WebRTC Live Streaming
 
 An Android client for [ProjectRTC](https://github.com/pchab/ProjectRTC).
-The apk is available [here](https://github.com/pchab/ProjectRTC/raw/master/AndroidRTC.apk).
 
 It is designed to demonstrate WebRTC video calls between androids and/or desktop browsers, but WebRtcClient could be used in other scenarios.
 
@@ -20,7 +19,7 @@ Your stream should appear as "android_test" in ProjectRTC, so you can also use t
 ## Libraries
 
 ### [libjingle peerconnection](https://code.google.com/p/webrtc/)
-### [android-websockets](https://github.com/koush/android-websockets)
+### [socket.io-client](https://github.com/nkzawa/socket.io-client.java)
 
 If you want to use them in your project, I recommend working with IntelliJ IDEA :
 

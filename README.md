@@ -4,7 +4,9 @@
 
 An Android client for [ProjectRTC](https://github.com/pchab/ProjectRTC).
 
-It is designed to demonstrate WebRTC video calls between androids and/or desktop browsers, but WebRtcClient could be used in other scenarios.
+It is designed to demonstrate WebRTC video calls between androids and/or desktop browsers, but WebRtcClient could be used in other scenarios. 
+Build with Android 1.1.0. The Intellij IDEA version is in the master branch.
+You can import the webrtc-client module in your own app if you want to work with it.
 
 ## How To
 
@@ -20,12 +22,6 @@ Your stream should appear as "android_test" in ProjectRTC, so you can also use t
 
 ### [libjingle peerconnection](https://code.google.com/p/webrtc/)
 ### [socket.io-client](https://github.com/nkzawa/socket.io-client.java)
-
-If you want to use them in your project, I recommend working with IntelliJ IDEA :
-
-- Start a new android application project
-- Add the .jar and .so in the libs folder
-- Right-click "add as library" 
 
 ## Author
 

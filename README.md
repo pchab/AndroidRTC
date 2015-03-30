@@ -8,6 +8,8 @@ It is designed to demonstrate WebRTC video calls between androids and/or desktop
 Build with Android Studio 1.1.0. The Intellij IDEA version is in the master branch.
 You can import the webrtc-client module in your own app if you want to work with it.
 
+It is also featured in the [Android Arsenal](https://android-arsenal.com/details/3/1262) !
+
 ## How To
 
 You need [ProjectRTC](https://github.com/pchab/ProjectRTC) up and running, and it must be somewhere that your android can access. (You can quickly test this with your android browser). Modify the host string (in res/values/strings.xml) to the server IP.

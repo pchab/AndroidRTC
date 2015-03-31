@@ -173,7 +173,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RTCListener {
         VideoRendererGui.update(localRender,
                 LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
                 LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING,
-                VideoRendererGui.ScalingType.SCALE_ASPECT_FIT);
+                scalingType);
     }
 
     @Override
@@ -185,15 +185,14 @@ public class RtcActivity extends Activity implements WebRtcClient.RTCListener {
         VideoRendererGui.update(localRender,
                 LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
                 LOCAL_WIDTH_CONNECTED, LOCAL_HEIGHT_CONNECTED,
-                VideoRendererGui.ScalingType.SCALE_ASPECT_FIT);
+                scalingType);
     }
 
     @Override
     public void onRemoveRemoteStream(int endPoint) {
-        VideoRendererGui.remove(remoteRender);
         VideoRendererGui.update(localRender,
                 LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
                 LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING,
-                VideoRendererGui.ScalingType.SCALE_ASPECT_FIT);
+                scalingType);
     }
 }

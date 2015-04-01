@@ -10,7 +10,6 @@ import com.github.nkzawa.emitter.Emitter;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.content.Context;
 import android.opengl.EGLContext;
 import android.util.Log;
 import org.webrtc.*;

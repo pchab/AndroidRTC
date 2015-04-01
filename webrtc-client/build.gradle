@@ -1,9 +1,5 @@
 apply plugin: 'com.android.library'
-apply plugin: 'com.github.dcendents.android-maven'
-apply plugin: 'com.jfrog.bintray'
 
-// This is the library version used when deploying the artifact
-version = "1.0.0"
 
 android {
     compileSdkVersion 22
@@ -23,62 +19,8 @@ android {
     }
 }
 
-def siteUrl = 'https://github.com/pchab/AndroidRTC'      // Homepage URL of the library
-def gitUrl = 'https://github.com/pchab/AndroidRTC.git'   // Git repository URL
-group = "fr.pchab"                                       // Maven Group ID for the artifact
-
-install {
-    repositories.mavenInstaller {
-        // This generates POM.xml with proper parameters
-        pom {
-            project {
-                packaging 'aar'
-
-                // Add your description here
-                name 'webrtc-client'
-                url siteUrl
-
-                // Set your license
-                licenses {
-                    license {
-                        name 'The Apache Software License, Version 2.0'
-                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                    }
-                }
-                developers {
-                    developer {
-                        id 'fr.pchab'
-                        name 'Pierre Chabardes'
-                        email 'pierre@chabardes.net'
-                    }
-                }
-            }
-        }
-    }
-}
-
 dependencies {
     compile 'com.android.support:appcompat-v7:22.0.0'
     compile 'com.github.nkzawa:socket.io-client:0.4.2'
     compile 'io.pristine:libjingle:8689@aar'
-}
-
-task sourcesJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
-}
-
-task javadoc(type: Javadoc) {
-    source = android.sourceSets.main.java.srcDirs
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-}
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
-
-artifacts {
-    archives javadocJar
-    archives sourcesJar
 }

@@ -8,5 +8,9 @@
         android:id="@+id/glview_call"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+    <android.view.SurfaceView
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
 </RelativeLayout>

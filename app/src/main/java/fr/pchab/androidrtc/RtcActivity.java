@@ -17,7 +17,7 @@ import fr.pchab.webrtcclient.PeerConnectionParameters;
 
 import java.util.List;
 
-public class RtcActivity extends Activity implements WebRtcClient.RTCListener {
+public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
     private final static int VIDEO_CALL_SENT = 666;
     private static final String VIDEO_CODEC_VP9 = "VP9";
     private static final String AUDIO_CODEC_OPUS = "opus";

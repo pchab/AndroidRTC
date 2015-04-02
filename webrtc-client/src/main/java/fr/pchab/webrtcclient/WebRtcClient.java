@@ -25,10 +25,13 @@ public class WebRtcClient {
     private MediaConstraints pcConstraints = new MediaConstraints();
     private MediaStream localMS;
     private VideoSource videoSource;
-    private RTCListener mListener;
+    private RtcListener mListener;
     private Socket client;
 
-    public interface RTCListener{
+    /**
+     * Implement this interface to be notified of events.
+     */
+    public interface RtcListener{
         void onCallReady(String callId);
 
         void onStatusChanged(String newStatus);
@@ -92,6 +95,14 @@ public class WebRtcClient {
         }
     }
 
+    /**
+     * Send a message through the signaling server
+     *
+     * @param to id of recipient
+     * @param type type of message
+     * @param payload payload of message
+     * @throws JSONException
+     */
     public void sendMessage(String to, String type, JSONObject payload) throws JSONException {
         JSONObject message = new JSONObject();
         message.put("to", to);
@@ -111,7 +122,7 @@ public class WebRtcClient {
             commandMap.put("candidate", new AddIceCandidateCommand());
         }
 
-        public Emitter.Listener onMessage = new Emitter.Listener() {
+        private Emitter.Listener onMessage = new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 JSONObject data = (JSONObject) args[0];
@@ -140,7 +151,7 @@ public class WebRtcClient {
             }
         };
 
-        public Emitter.Listener onId = new Emitter.Listener() {
+        private Emitter.Listener onId = new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 String id = (String) args[0];
@@ -156,6 +167,7 @@ public class WebRtcClient {
 
         @Override
         public void onCreateSuccess(final SessionDescription sdp) {
+            // TODO: modify sdp to use pcParams prefered codecs
             try {
                 JSONObject payload = new JSONObject();
                 payload.put("type", sdp.type.canonicalForm());
@@ -252,7 +264,7 @@ public class WebRtcClient {
         endPoints[peer.endPoint] = false;
     }
 
-    public WebRtcClient(RTCListener listener, String host, PeerConnectionParameters params, EGLContext mEGLcontext) {
+    public WebRtcClient(RtcListener listener, String host, PeerConnectionParameters params, EGLContext mEGLcontext) {
         mListener = listener;
         pcParams = params;
         PeerConnectionFactory.initializeAndroidGlobals(listener, true, true,
@@ -277,14 +289,23 @@ public class WebRtcClient {
         pcConstraints.optional.add(new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
     }
 
+    /**
+     * Call this method in Activity.onPause()
+     */
     public void onPause() {
         if(videoSource != null) videoSource.stop();
     }
 
+    /**
+     * Call this method in Activity.onResume()
+     */
     public void onResume() {
         if(videoSource != null) videoSource.restart();
     }
 
+    /**
+     * Call this method in Activity.onDestroy()
+     */
     public void onDestroy() {
         for (Peer peer : peers.values()) {
             peer.pc.dispose();
@@ -300,6 +321,14 @@ public class WebRtcClient {
         return MAX_PEER;
     }
 
+    /**
+     * Start the client.
+     *
+     * Set up the local stream and notify the signaling server.
+     * Call this method after onCallReady.
+     *
+     * @param name client name
+     */
     public void start(String name){
         setCamera();
         try {

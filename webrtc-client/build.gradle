@@ -20,7 +20,6 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:22.0.0'
     compile 'com.github.nkzawa:socket.io-client:0.4.2'
     compile 'io.pristine:libjingle:8871@aar'
 }

@@ -194,8 +194,8 @@ public class WebRtcClient {
         @Override
         public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
             if(iceConnectionState == PeerConnection.IceConnectionState.DISCONNECTED) {
-                mListener.onStatusChanged("DISCONNECTED");
                 removePeer(id);
+                mListener.onStatusChanged("DISCONNECTED");
             }
         }
 

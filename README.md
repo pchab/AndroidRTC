@@ -27,4 +27,4 @@ Your stream should appear as "android_test" in ProjectRTC, so you can also use t
 
 ## Author
 
-- [Pierre Chabardes](mailto:pierre@chabardes.net): Looking for a developper ? I'm looking for a job !
+- [Pierre Chabardes](mailto:pierre@chabardes.net)

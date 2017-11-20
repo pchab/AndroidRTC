@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AndroidRTC</string>
-    <string name="host">ns37269.ip-91-121-3.eu</string>
+    <string name="host">https://serene-escarpment-10321.herokuapp.com</string>
     <string name="port">3000</string>
     <string name="action_settings">Options</string>
 </resources>

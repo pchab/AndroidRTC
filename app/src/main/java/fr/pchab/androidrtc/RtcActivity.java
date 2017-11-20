@@ -55,8 +55,10 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
                         | LayoutParams.FLAG_SHOW_WHEN_LOCKED
                         | LayoutParams.FLAG_TURN_SCREEN_ON);
         setContentView(R.layout.main);
-        mSocketAddress = "http://" + getResources().getString(R.string.host);
-        mSocketAddress += (":" + getResources().getString(R.string.port) + "/");
+        //mSocketAddress = "http://" + getResources().getString(R.string.host);
+        //mSocketAddress += (":" + getResources().getString(R.string.port) + "/");
+
+        mSocketAddress = getResources().getString(R.string.host) + "/";
 
         vsv = (GLSurfaceView) findViewById(R.id.glview_call);
         vsv.setPreserveEGLContextOnPause(true);

@@ -1,10 +1,12 @@
 package fr.pchab.androidrtc;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Point;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.view.Window;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Toast;
@@ -46,6 +48,9 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
     private String mSocketAddress;
     private String callerId;
 
+    private static final String[] RequiredPermissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO};
+    protected PermissionChecker permissionChecker = new PermissionChecker();
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,6 +90,22 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
             final List<String> segments = intent.getData().getPathSegments();
             callerId = segments.get(0);
         }
+        checkPermissions();
+    }
+
+    private void checkPermissions() {
+        permissionChecker.verifyPermissions(this, RequiredPermissions, new PermissionChecker.VerifyPermissionsCallback() {
+
+            @Override
+            public void onPermissionAllGranted() {
+
+            }
+
+            @Override
+            public void onPermissionDeny(String[] permissions) {
+                Toast.makeText(RtcActivity.this, "Please grant required permissions.", Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void init() {
@@ -156,7 +177,9 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
 
     public void startCam() {
         // Camera settings
-        client.start("android_test");
+        if (PermissionChecker.hasPermissions(this, RequiredPermissions)) {
+            client.start("android_test");
+        }
     }
 
     @Override
@@ -196,5 +219,11 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
                 LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
                 LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING,
                 scalingType, false);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        permissionChecker.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 }
